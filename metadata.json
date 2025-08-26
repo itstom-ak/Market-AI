@@ -1,0 +1,5 @@
+{
+  "name": "AI-Powered Marketplace",
+  "description": "An intelligent marketplace where users can submit requests for items by uploading an image, and our AI, powered by Gemini, automatically generates a detailed description to connect them with the right vendors.",
+  "requestFramePermissions": []
+}
