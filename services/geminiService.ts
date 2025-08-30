@@ -34,7 +34,7 @@ export const analyzeImageAndSuggestDetails = async (imageFile: File): Promise<Ai
     try {
         const imagePart = await fileToGenerativePart(imageFile);
         
-        const prompt = `Analyze the object in this image using Google Search to identify it. I am trying to find a replacement part or a similar item. Respond ONLY with a JSON object containing "title", "description", and "category". The title should be concise. The description should be a detailed technical description for a vendor. The category should be a single most relevant choice from this list: "Auto Parts", "Plumbing", "Electronics", "Hardware", "Computing", "General". Do not include any text, formatting, or code fences outside of the JSON object.`;
+        const prompt = `Analyze the object in this image using Google Search to identify it. I am trying to find a replacement part or a similar item. Respond ONLY with a JSON object containing "title", "description", and "categories". The title should be concise. The description should be a detailed technical description for a vendor. The "categories" field should be an array of up to three most relevant choices from this list: "Auto Parts", "Plumbing", "Electronics", "Hardware", "Computing", "Home Improvement", "Appliances", "Gardening", "Sporting Goods", "Industrial", "General". Do not include any text, formatting, or code fences outside of the JSON object.`;
 
         const response = await ai.models.generateContent({
             model: model,

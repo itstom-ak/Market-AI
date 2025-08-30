@@ -91,14 +91,14 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, vendors, request
                 
                 {/* Requests Table */}
                 <div className="bg-slate-800 p-6 rounded-lg shadow-lg">
-                    <h3 className="text-xl font-bold mb-4 text-white">All Requests</h3>
+                    <h3 className="text-xl font-bold mb-4 text-white">All Enquiries</h3>
                     <div className="overflow-x-auto max-h-[815px] overflow-y-auto">
                         <table className="w-full text-sm text-left text-slate-300">
                             <thead className="text-xs text-slate-400 uppercase bg-slate-700 sticky top-0">
                                 <tr>
-                                    <th scope="col" className="px-4 py-3">Title</th>
+                                    <th scope="col" className="px-4 py-3">Enquiry Title</th>
                                     <th scope="col" className="px-4 py-3">User</th>
-                                    <th scope="col" className="px-4 py-3">Category</th>
+                                    <th scope="col" className="px-4 py-3">Items</th>
                                     <th scope="col" className="px-4 py-3">Status</th>
                                 </tr>
                             </thead>
@@ -107,8 +107,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, vendors, request
                                     <tr key={request.id} className="border-b border-slate-700 hover:bg-slate-900/50">
                                         <td className="px-4 py-3 font-medium text-white truncate max-w-xs">{request.title}</td>
                                         <td className="px-4 py-3">{getUserName(request.userId)}</td>
-                                        <td className="px-4 py-3">
-                                          <span className="inline-block bg-primary-900 text-primary-300 text-xs font-semibold px-2 py-1 rounded-full">{request.category}</span>
+                                        <td className="px-4 py-3 text-center">
+                                          {request.items.length}
                                         </td>
                                         <td className="px-4 py-3">
                                             <span className={`px-2 py-1 text-xs font-semibold rounded-full ${

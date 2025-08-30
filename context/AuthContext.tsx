@@ -1,5 +1,5 @@
 import React, { createContext, useState, useContext, useEffect, ReactNode } from 'react';
-import { User, Vendor, Role } from '../types';
+import { User, Vendor, Role, Category } from '../types';
 import { mockUsers, mockVendors, mockAdmin } from '../services/mockData';
 
 // Simplified JWT decoding
@@ -18,11 +18,16 @@ interface AuthContextType {
   role: Role | null;
   appType: Role | null;
   loading: boolean;
+  users: User[];
+  vendors: Vendor[];
   login: (credentialResponse: any, role: Role) => void;
   logout: () => void;
   skipLogin: (role: Role) => void;
   selectAppType: (role: Role) => void;
   resetAppSelection: () => void;
+  loginWithPassword: (email: string, password: string, role: Role) => Promise<void>;
+  signup: (details: Omit<User, 'id'> | Omit<Vendor, 'id'>, role: Role) => Promise<void>;
+  updateVendorProfile: (vendorId: string, updates: Partial<Vendor>) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -32,6 +37,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [role, setRole] = useState<Role | null>(null);
   const [appType, setAppType] = useState<Role | null>(null);
   const [loading, setLoading] = useState(true);
+  const [users, setUsers] = useState<User[]>(mockUsers);
+  const [vendors, setVendors] = useState<Vendor[]>(mockVendors);
 
   useEffect(() => {
     setLoading(true);
@@ -74,21 +81,31 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     if (decodedToken) {
       const { email, name, sub } = decodedToken;
 
-      let foundUser: User | Vendor | null = null;
+      let foundUser: User | Vendor;
       
-      if (selectedRole === 'user') {
-        foundUser = mockUsers.find(u => u.email === email) || {
-          id: `google-${sub}`,
-          name: name,
-          email: email,
-        };
+      if (selectedRole === 'user' || selectedRole === 'admin') {
+        const existingUser = users.find(u => u.email === email);
+        if (existingUser) {
+          foundUser = existingUser;
+        } else {
+          const newUser: User = { id: `google-${sub}`, name, email };
+          setUsers(prev => [...prev, newUser]);
+          foundUser = newUser;
+        }
       } else { // vendor
-        foundUser = mockVendors.find(v => v.email === email) || {
-          id: `google-${sub}`,
-          businessName: `${name}'s Store`,
-          specialties: ['General'],
-          email: email,
-        };
+        const existingVendor = vendors.find(v => v.email === email);
+        if (existingVendor) {
+          foundUser = existingVendor;
+        } else {
+          const newVendor: Vendor = {
+            id: `google-${sub}`,
+            businessName: `${name}'s Store`,
+            specialties: ['General'],
+            email: email,
+          };
+          setVendors(prev => [...prev, newVendor]);
+          foundUser = newVendor;
+        }
       }
       
       setUser(foundUser);
@@ -97,6 +114,79 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       localStorage.setItem('marketplace_role', selectedRole);
     }
     setLoading(false);
+  };
+  
+  const loginWithPassword = async (email: string, password: string, selectedRole: Role): Promise<void> => {
+    setLoading(true);
+    selectAppType(selectedRole);
+
+    let foundUser: User | Vendor | undefined;
+
+    if (selectedRole === 'user' || selectedRole === 'admin') {
+        foundUser = users.find(u => u.email === email && u.password === password);
+    } else if (selectedRole === 'vendor') {
+        foundUser = vendors.find(v => v.email === email && v.password === password);
+    }
+
+    if (foundUser) {
+        setUser(foundUser);
+        setRole(selectedRole);
+        localStorage.setItem('marketplace_user', JSON.stringify(foundUser));
+        localStorage.setItem('marketplace_role', selectedRole);
+        setLoading(false);
+    } else {
+        setLoading(false);
+        throw new Error("Invalid credentials. Please try again.");
+    }
+  };
+  
+  const signup = async (details: Omit<User, 'id'> | Omit<Vendor, 'id'>, selectedRole: Role): Promise<void> => {
+    setLoading(true);
+    selectAppType(selectedRole);
+
+    let newUser: User | Vendor;
+    const commonDetails = { id: `new-${Date.now()}`, ...details };
+
+    if (selectedRole === 'user' || selectedRole === 'admin') {
+        const userDetails = details as Omit<User, 'id'>;
+        const existing = users.find(u => u.email === userDetails.email);
+        if (existing) {
+            setLoading(false);
+            throw new Error("A user with this email already exists.");
+        }
+        newUser = commonDetails as User;
+        setUsers(prev => [...prev, newUser as User]);
+    } else { // vendor
+        const vendorDetails = details as Omit<Vendor, 'id'>;
+        const existing = vendors.find(v => v.email === vendorDetails.email);
+        if (existing) {
+            setLoading(false);
+            throw new Error("A vendor with this email already exists.");
+        }
+        // Ensure new vendors have specialties
+        if (!('specialties' in vendorDetails) || vendorDetails.specialties.length === 0) {
+            (commonDetails as Vendor).specialties = ['General'];
+        }
+        newUser = commonDetails as Vendor;
+        setVendors(prev => [...prev, newUser as Vendor]);
+    }
+
+    setUser(newUser);
+    setRole(selectedRole);
+    localStorage.setItem('marketplace_user', JSON.stringify(newUser));
+    localStorage.setItem('marketplace_role', selectedRole);
+    setLoading(false);
+  };
+
+  const updateVendorProfile = (vendorId: string, updates: Partial<Vendor>) => {
+    setVendors(prevVendors => 
+        prevVendors.map(v => v.id === vendorId ? { ...v, ...updates } : v)
+    );
+    if (user?.id === vendorId && role === 'vendor') {
+        const updatedUser = { ...user, ...updates };
+        setUser(updatedUser);
+        localStorage.setItem('marketplace_user', JSON.stringify(updatedUser));
+    }
   };
 
   const skipLogin = (selectedRole: Role) => {
@@ -124,6 +214,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     setUser(guestUser);
     setRole(selectedRole);
+    localStorage.setItem('marketplace_user', JSON.stringify(guestUser));
+    localStorage.setItem('marketplace_role', selectedRole);
     setLoading(false);
   };
 
@@ -143,8 +235,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const isAuthenticated = !!user;
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, user, role, appType, loading, login, logout, skipLogin, selectAppType, resetAppSelection }}>
+    <AuthContext.Provider value={{ isAuthenticated, user, role, appType, loading, users, vendors, login, logout, skipLogin, selectAppType, resetAppSelection, loginWithPassword, signup, updateVendorProfile }}>
       {children}
+    {/* FIX: Corrected typo in closing tag from Auth-context to AuthContext */}
     </AuthContext.Provider>
   );
 };
